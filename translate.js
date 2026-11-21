@@ -52,7 +52,8 @@ function promptFor(text, target) {
   ].join(" ");
 }
 
-async function customTranslate(q, target, cfg) {
+// ----- shared chat call for the custom provider -----
+async function chat(q, system, cfg) {
   const base = String(cfg.baseUrl || "").trim().replace(/\/+$/, "");
   const res = await fetch(`${base}/chat/completions`, {
     method: "POST",
@@ -64,7 +65,7 @@ async function customTranslate(q, target, cfg) {
       model: cfg.model,
       max_tokens: 2048,
       messages: [
-        { role: "system", content: promptFor(q, target) },
+        { role: "system", content: system },
         { role: "user", content: q }
       ]
     })
@@ -80,8 +81,38 @@ async function customTranslate(q, target, cfg) {
   }
   const data = await res.json();
   const out = data?.choices?.[0]?.message?.content?.trim();
-  if (!out) throw new Error("The service returned an empty translation.");
+  if (!out) throw new Error("The service returned an empty response.");
+  return out;
+}
+
+async function customTranslate(q, target, cfg) {
+  const out = await chat(q, promptFor(q, target), cfg);
   return { text: out, source: "" };
+}
+
+// ----- prompt engineering (custom AI only) -----
+function promptEngineerSystem(target) {
+  const lang = languageName(target);
+  return [
+    "You are an expert prompt engineer. The user's message is rough text — notes, " +
+      "a draft, or a loose task description.",
+    "Rewrite it into one clear, well-structured prompt that an AI assistant can act on.",
+    "Keep every detail and the original intent; add helpful structure (context, task, " +
+      "constraints) only where the text itself supports it.",
+    `Write the final prompt in ${lang} (language code: ${target}).`,
+    "Reply with ONLY the prompt — no preamble, no quotes, no explanation."
+  ].join(" ");
+}
+
+export async function generatePrompt(text, target) {
+  const q = String(text || "").trim().slice(0, MAX_CHARS);
+  if (!q) throw new Error("Nothing selected.");
+  const cfg = await getConfig();
+  if (!(cfg.provider === "custom" && cfg.baseUrl && cfg.model)) {
+    throw new Error("Prompt generation needs a custom AI provider.");
+  }
+  const out = await chat(q, promptEngineerSystem(target || "en"), cfg);
+  return { text: out };
 }
 
 export async function translate(text, target) {

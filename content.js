@@ -61,7 +61,22 @@
       display: inline-flex; align-items: center; justify-content: center;
     }
     .icon.close:hover { background: var(--danger-hover); color: #fff; }
-    :is(.lang, .icon, .btn, .item, .search):focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+    .gen {
+      border: 1px solid var(--accent); background: var(--accent); color: #fff;
+      border-radius: 8px; padding: 5px 9px; font: inherit; font-size: 12px;
+      font-weight: 600; cursor: pointer; white-space: nowrap; flex: none;
+    }
+    .gen:hover { filter: brightness(1.12); }
+    @media (prefers-color-scheme: dark) { .gen { color: #10131a; } }
+    .reset {
+      border: 1px solid var(--line); background: var(--bg); color: var(--muted);
+      width: 28px; height: 28px; padding: 0; flex: none;
+      border-radius: 8px; cursor: pointer;
+      display: inline-flex; align-items: center; justify-content: center;
+    }
+    .reset svg { width: 14px; height: 14px; }
+    .reset:hover { background: var(--soft); color: var(--fg); }
+    :is(.lang, .icon, .btn, .item, .search, .gen, .reset):focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
     .menu {
       position: absolute; top: calc(100% + 6px); left: 0; width: 250px; z-index: 2;
       background: var(--bg); border: 1px solid var(--line); border-radius: 10px;
@@ -109,6 +124,13 @@
             <ul class="list" role="listbox"></ul>
           </div>
         </div>
+        <button class="gen" type="button" hidden>Generate prompt</button>
+        <button class="reset" type="button" aria-label="Reset to translation" hidden>
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M13.7 8a5.7 5.7 0 1 1-1.66-4.02" />
+            <path d="M13.7 1.6v3.1h-3.1" />
+          </svg>
+        </button>
         <span class="from"></span>
         <button class="icon close" type="button" aria-label="Close">&times;</button>
       </div>
@@ -121,7 +143,7 @@
   `;
 
   let host, root, el;
-  let state = { text: "", target: "bn", anchor: null, reqId: 0, open: false };
+  let state = { text: "", target: "bn", anchor: null, reqId: 0, open: false, mode: "translate" };
 
   function build() {
     host = document.createElement("div");
@@ -132,6 +154,7 @@
     el = {
       panel: q(".panel"), langBtn: q(".lang"), langName: q(".lang-name"), menu: q(".menu"),
       search: q(".search"), list: q(".list"), from: q(".from"), close: q(".close"),
+      gen: q(".gen"), reset: q(".reset"),
       result: q(".result"), foot: q(".foot"), copy: q(".copy"), retry: q(".retry")
     };
 
@@ -140,7 +163,9 @@
     el.search.addEventListener("keydown", onSearchKey);
     el.list.addEventListener("keydown", onListKey);
     el.close.addEventListener("click", closePanel);
-    el.retry.addEventListener("click", run);
+    el.retry.addEventListener("click", () => (state.mode === "prompt" ? runPrompt() : run()));
+    el.gen.addEventListener("click", generate);
+    el.reset.addEventListener("click", resetMode);
     el.copy.addEventListener("click", async () => {
       try {
         await navigator.clipboard.writeText(el.result.textContent);
@@ -204,7 +229,9 @@
     try { chrome.storage.local.set({ qtTarget: code }); } catch {}
     closeMenu();
     el.langName.textContent = nameOf(code)[2];
-    run();
+    // The selected language drives both translation and prompt generation.
+    if (state.mode === "prompt") runPrompt();
+    else run();
   }
 
   // ----- translate -----
@@ -236,6 +263,50 @@
     } else {
       el.result.className = "result error";
       el.result.textContent = (res && res.error) || "Couldn't translate. Check your connection and try again.";
+      el.foot.hidden = false;
+      el.retry.hidden = false;
+    }
+    place();
+  }
+
+  // ----- prompt generation (custom AI only) -----
+  async function generate() {
+    state.mode = "prompt";
+    el.reset.hidden = false;
+    runPrompt();
+  }
+  function resetMode() {
+    exitPromptMode();
+    run();
+  }
+  function exitPromptMode() {
+    state.mode = "translate";
+    if (el.reset) el.reset.hidden = true;
+  }
+  async function runPrompt() {
+    const id = ++state.reqId;
+    el.from.textContent = "";
+    el.foot.hidden = true;
+    el.retry.hidden = true;
+    el.result.className = "result loading";
+    el.result.textContent = "Crafting prompt…";
+    place();
+
+    let res;
+    try {
+      res = await chrome.runtime.sendMessage({ type: "qt-prompt", text: state.text, target: state.target });
+    } catch (e) {
+      res = { ok: false, error: "The extension was reloaded. Refresh this page and try again." };
+    }
+    if (id !== state.reqId) return; // a newer request replaced this one
+
+    if (res && res.ok) {
+      el.result.className = "result";
+      el.result.textContent = res.text;
+      el.foot.hidden = false;
+    } else {
+      el.result.className = "result error";
+      el.result.textContent = (res && res.error) || "Couldn't generate the prompt. Try again.";
       el.foot.hidden = false;
       el.retry.hidden = false;
     }
@@ -279,6 +350,7 @@
     if (!state.open) return;
     state.open = false;
     state.reqId++;
+    exitPromptMode();
     closeMenu();
     el.panel.hidden = true;
     document.removeEventListener("mousedown", onDocDown, true);
@@ -289,6 +361,14 @@
     text = (text || "").trim();
     if (!text) return;
     if (!host) build();
+    exitPromptMode();
+    // "Generate prompt" is only meaningful with a custom AI provider configured.
+    let custom = false;
+    try {
+      const cfg = (await chrome.storage.local.get("qtConfig")).qtConfig;
+      custom = !!(cfg && cfg.provider === "custom" && cfg.baseUrl && cfg.model);
+    } catch {}
+    el.gen.hidden = !custom;
     try {
       const saved = await chrome.storage.local.get("qtTarget");
       if (saved.qtTarget) state.target = saved.qtTarget;

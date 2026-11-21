@@ -1,4 +1,4 @@
-import { translate } from "./translate.js";
+import { translate, generatePrompt } from "./translate.js";
 
 const MENU_ID = "quick-translate";
 
@@ -32,6 +32,12 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
 });
 
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
+  if (msg?.type === "qt-prompt") {
+    generatePrompt(msg.text, msg.target)
+      .then((r) => sendResponse({ ok: true, ...r }))
+      .catch((e) => sendResponse({ ok: false, error: e.message || String(e) }));
+    return true; // keep the channel open for the async response
+  }
   if (msg?.type !== "qt-translate") return;
   translate(msg.text, msg.target)
     .then((r) => sendResponse({ ok: true, ...r }))
