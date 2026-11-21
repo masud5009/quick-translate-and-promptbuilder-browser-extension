@@ -4,141 +4,259 @@
   <meta charset="utf-8" />
   <title>Quick Translate</title>
   <style>
+    /* ---- dark navy theme ---- */
     :root {
-      --bg: #ffffff; --fg: #14181f; --muted: #5d6675; --line: #dfe3ea;
-      --accent: #2f5be7; --soft: #eef2ff; --err: #b42318; --ok: #067647;
-    }
-    @media (prefers-color-scheme: dark) {
-      :root {
-        --bg: #1b1f27; --fg: #eceff4; --muted: #98a2b3; --line: #323945;
-        --accent: #8aa5ff; --soft: #262c3a; --err: #ff8a7a; --ok: #75e0a7;
-      }
+      --bg: #0e1420;
+      --surface: #131b2c;
+      --surface2: #182238;
+      --input: #10182a;
+      --fg: #e8edf7;
+      --muted: #8b96ad;
+      --line: #232e45;
+      --line-hover: #33415f;
+      --accent: #5b7cfa;
+      --accent-hover: #6a87ff;
+      --accent-soft: rgba(91, 124, 250, 0.12);
+      --ok: #34d399;
+      --err: #ff8a7a;
     }
     * { box-sizing: border-box; }
     body {
-      width: 340px; margin: 0; padding: 14px;
+      width: 400px; margin: 0; padding: 0;
       background: var(--bg); color: var(--fg);
-      font: 14px/1.5 system-ui, -apple-system, "Segoe UI", "Noto Sans Bengali", "Nirmala UI", sans-serif;
+      font: 14px/1.45 system-ui, -apple-system, "Segoe UI", "Noto Sans Bengali", "Nirmala UI", sans-serif;
+      -webkit-font-smoothing: antialiased;
     }
-    h1 { margin: 0 0 12px; font-size: 15px; font-weight: 700; }
-    .active {
-      margin: -6px 0 10px; font-size: 12px; color: var(--muted);
+
+    /* ---- header ---- */
+    .head {
+      display: flex; align-items: center; gap: 12px;
+      padding: 12px 16px; border-bottom: 1px solid var(--line);
     }
-    .active b { color: var(--fg); }
-    .field { margin-bottom: 10px; }
-    label { display: block; margin-bottom: 4px; font-size: 12.5px; font-weight: 600; }
-    label small { font-weight: 400; color: var(--muted); }
+    .logo {
+      width: 34px; height: 34px; border-radius: 9px; display: block;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+    }
+    .head .divider { width: 1px; height: 26px; background: var(--line); }
+    .head h1 { margin: 0; font-size: 17px; font-weight: 650; letter-spacing: 0.2px; }
+
+    main { padding: 14px 16px 16px; }
+
+    /* ---- active provider status ---- */
+    .active-row { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+    .dot {
+      flex: none; width: 9px; height: 9px; border-radius: 50%;
+      background: var(--ok); box-shadow: 0 0 0 3px rgba(52, 211, 153, 0.15);
+    }
+    .active { margin: 0; font-size: 13px; color: var(--muted); }
+    .active b { color: var(--fg); font-weight: 600; }
+
+    /* ---- provider cards ---- */
+    .providers { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .prov {
+      display: flex; align-items: flex-start; gap: 10px;
+      padding: 12px 12px 13px; text-align: left; cursor: pointer;
+      background: var(--surface); color: var(--fg); font: inherit;
+      border: 1.5px solid var(--line); border-radius: 12px;
+      transition: border-color 0.15s, background 0.15s;
+    }
+    .prov:hover { background: var(--surface2); border-color: var(--line-hover); }
+    .prov:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    .prov[aria-pressed="true"] {
+      border-color: var(--accent); background: var(--accent-soft);
+    }
+    .radio {
+      flex: none; position: relative; width: 18px; height: 18px; margin-top: 2px;
+      border-radius: 50%; border: 2px solid #56617a; transition: border-color 0.15s;
+    }
+    .prov[aria-pressed="true"] .radio { border-color: var(--accent); background: var(--accent); }
+    .prov[aria-pressed="true"] .radio::after {
+      content: ""; position: absolute; inset: 0; margin: auto;
+      width: 6px; height: 6px; border-radius: 50%; background: #fff;
+    }
+    .prov-text { min-width: 0; }
+    .prov-title { display: block; font-weight: 650; font-size: 14.5px; }
+    .prov small {
+      display: block; margin-top: 3px; font-size: 12px; line-height: 1.35;
+      color: var(--muted);
+    }
+
+    /* ---- fields ---- */
+    #custom-section[hidden] { display: none; }
+    .field { margin-top: 14px; }
+    .label-row { display: flex; align-items: center; gap: 6px; margin-bottom: 7px; }
+    .label-row label { font-size: 13.5px; font-weight: 650; }
+    .label-row .inl { font-size: 13px; font-weight: 400; color: var(--muted); }
+
     input[type="text"], input[type="password"] {
-      width: 100%; padding: 7px 9px; font: inherit; color: var(--fg);
-      background: var(--bg); border: 1px solid var(--line); border-radius: 8px;
+      width: 100%; padding: 10px 12px; font: inherit; font-size: 14px; color: var(--fg);
+      background: var(--input); border: 1px solid var(--line); border-radius: 10px;
+      transition: border-color 0.15s, box-shadow 0.15s;
     }
-    input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
-    .hint { margin-top: 4px; font-size: 11.5px; color: var(--muted); display: flex; align-items: center; gap: 5px; }
-    .q {
-      flex: none; position: relative; width: 14px; height: 14px; margin-left: 1px;
-      display: inline-flex; align-items: center; justify-content: center;
-      border: 1px solid var(--line); border-radius: 50%; cursor: help;
-      font-size: 10px; font-weight: 700; color: var(--muted); background: none; padding: 0;
+    input::placeholder { color: #5d6a85; }
+    input:hover { border-color: var(--line-hover); }
+    input:focus {
+      outline: none; border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-soft);
     }
-    .q:hover, .q:focus-visible { color: var(--fg); border-color: var(--muted); outline: none; }
-    .q .tip {
-      display: none; position: absolute; bottom: 20px; left: -6px; z-index: 5;
-      width: 230px; padding: 7px 9px; border-radius: 8px;
-      background: var(--fg); color: var(--bg); font-size: 11.5px; font-weight: 400;
-      line-height: 1.45; text-align: left; white-space: normal;
-      box-shadow: 0 6px 18px rgba(0,0,0,.35); pointer-events: none;
+
+    .hint {
+      display: flex; align-items: flex-start; gap: 6px;
+      margin: 7px 0 0; font-size: 12px; line-height: 1.4; color: var(--muted);
     }
-    .q:hover .tip, .q:focus .tip { display: block; }
-    .providers { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; }
-    .providers button {
-      padding: 9px 6px; font: inherit; font-weight: 600; cursor: pointer;
-      color: var(--fg); background: var(--bg);
-      border: 1.5px solid var(--line); border-radius: 10px;
-    }
-    .providers button small { display: block; font-weight: 400; font-size: 11px; color: var(--muted); margin-top: 2px; }
-    .providers button[aria-pressed="true"] {
-      border-color: var(--accent); background: var(--soft);
-    }
+    .hint svg { flex: none; width: 13px; height: 13px; margin-top: 2px; opacity: 0.8; }
+
     .row { display: flex; gap: 8px; align-items: center; }
     .row input { flex: 1; min-width: 0; }
-    .btn {
-      border: 1px solid var(--line); background: var(--bg); color: var(--fg);
-      border-radius: 8px; padding: 7px 12px; font: inherit; cursor: pointer; white-space: nowrap;
+
+    /* ---- info tooltip (?) icon ---- */
+    .q { position: relative; display: inline-flex; color: var(--muted); cursor: help; }
+    .q svg { width: 15px; height: 15px; }
+    .q:hover, .q:focus-visible { color: var(--fg); outline: none; }
+    .q .tip {
+      display: none; position: absolute; bottom: 22px; left: -8px; z-index: 5;
+      width: 240px; padding: 8px 10px; border-radius: 8px;
+      background: #1a2336; border: 1px solid var(--line); color: var(--fg);
+      font-size: 12px; font-weight: 400; line-height: 1.45; text-align: left;
+      box-shadow: 0 8px 22px rgba(0, 0, 0, 0.45); pointer-events: none;
     }
-    .btn:hover { background: var(--soft); }
-    .btn.primary { background: var(--accent); border-color: var(--accent); }
-    @media (prefers-color-scheme: dark) { .btn.primary { color: #10131a; } }
-    .btn:disabled { opacity: 0.5; cursor: default; }
-    .actions { display: flex; gap: 8px; margin-top: 12px; }
-    .actions .primary { flex: 1; }
-    .status { margin-top: 10px; font-size: 12.5px; min-height: 18px; }
+    .q:hover .tip, .q:focus .tip { display: block; }
+
+    /* ---- buttons ---- */
+    .btn {
+      padding: 10px 16px; font: inherit; font-weight: 600; cursor: pointer;
+      border-radius: 10px; transition: background 0.15s, border-color 0.15s;
+    }
+    .btn:disabled { opacity: 0.55; cursor: default; }
+    .btn.ghost {
+      background: transparent; color: var(--fg); border: 1px solid var(--line);
+    }
+    .btn.ghost:hover:not(:disabled) { background: var(--surface2); border-color: var(--line-hover); }
+    .btn.ghost:focus-visible, .btn.primary:focus-visible {
+      outline: 2px solid var(--accent); outline-offset: 2px;
+    }
+    .btn.primary {
+      flex: 1; background: var(--accent); border: 1px solid var(--accent); color: #fff;
+    }
+    .btn.primary:hover:not(:disabled) { background: var(--accent-hover); border-color: var(--accent-hover); }
+    .btn.mini {
+      padding: 10px 14px; font-size: 13.5px; background: var(--surface2);
+      color: var(--fg); border: 1px solid var(--line); white-space: nowrap;
+    }
+    .btn.mini:hover:not(:disabled) { border-color: var(--accent); color: #fff; }
+    .btn.mini:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+    .actions { display: flex; gap: 10px; margin-top: 16px; }
+
+    /* ---- status (JS-toggled) ---- */
+    .status { margin: 10px 0 0; font-size: 12.5px; line-height: 1.4; }
     .status.ok { color: var(--ok); }
     .status.err { color: var(--err); }
     .status.loading { color: var(--muted); }
-    #custom-section[hidden] { display: none; }
-    .datalist-wrap { position: relative; }
   </style>
 </head>
 <body>
-  <h1>Quick Translate</h1>
-  <p class="active" id="active-label"></p>
-
-  <div class="providers" role="group" aria-label="Provider">
-    <button type="button" id="pick-google" aria-pressed="false">
-      Google Translate
-      <small>Free, no key needed</small>
-    </button>
-    <button type="button" id="pick-custom" aria-pressed="false">
-      Custom AI
-      <small>OpenAI-compatible endpoint</small>
-    </button>
-  </div>
-
-  <div id="custom-section" hidden>
-    <div class="field">
-      <label for="base-url">API base URL</label>
-      <input id="base-url" type="text" placeholder="https://api.provider.com/v1" spellcheck="false" autocomplete="off" />
-      <p class="hint">
-        <span class="q" tabindex="0" role="note" aria-label="More about the base URL">
-          ?
-          <span class="tip">Paste the provider's API base URL — everything before /chat/completions. Examples: https://api.openai.com/v1, https://openrouter.ai/api/v1, http://localhost:11434/v1 (Ollama).</span>
-        </span>
-        Any OpenAI-compatible endpoint (OpenRouter, Groq, Ollama…)
-      </p>
+  <header class="head">
+    <img class="logo" src="icons/icon48.png" alt="" />
+    <span class="divider" aria-hidden="true"></span>
+    <h1>Quick Translate</h1>
+  </header>
+  <main>
+    <div class="active-row">
+      <span class="dot" aria-hidden="true"></span>
+      <p class="active" id="active-label"></p>
     </div>
-    <div class="field">
-      <label for="api-key">API key</label>
-      <input id="api-key" type="password" placeholder="sk-…" spellcheck="false" autocomplete="off" />
-      <p class="hint">
-        <span class="q" tabindex="0" role="note" aria-label="More about the API key">
-          ?
-          <span class="tip">Saved only in chrome.storage.local on your device. It is sent only to the base URL above as a Bearer token — never synced to any account and never part of the extension code.</span>
+
+    <div class="providers" role="group" aria-label="Provider">
+      <button type="button" class="prov" id="pick-google" aria-pressed="false">
+        <span class="radio" aria-hidden="true"></span>
+        <span class="prov-text">
+          <span class="prov-title">Google Translate</span>
+          <small>Free, no key needed</small>
         </span>
-        Stored only in this browser — never synced or shared
-      </p>
+      </button>
+      <button type="button" class="prov" id="pick-custom" aria-pressed="false">
+        <span class="radio" aria-hidden="true"></span>
+        <span class="prov-text">
+          <span class="prov-title">Custom AI</span>
+          <small>OpenAI-compatible endpoint</small>
+        </span>
+      </button>
     </div>
-    <div class="field">
-      <label for="model">Model <small>— pick from the list or type one</small></label>
-      <div class="row">
-        <input id="model" type="text" list="model-list" placeholder="provider-model-id" spellcheck="false" autocomplete="off" />
-        <button type="button" class="btn" id="load-models">Load models</button>
+
+    <div id="custom-section" hidden>
+      <div class="field">
+        <div class="label-row">
+          <label for="base-url">API base URL</label>
+          <span class="q" tabindex="0" aria-label="More about the base URL">
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4">
+              <circle cx="8" cy="8" r="6.4" />
+              <path d="M8 7.3v3.4" stroke-linecap="round" />
+              <circle cx="8" cy="5.1" r="0.9" fill="currentColor" stroke="none" />
+            </svg>
+            <span class="tip">Paste the provider's API base URL — everything before /chat/completions. Examples: https://api.openai.com/v1, https://openrouter.ai/api/v1, http://localhost:11434/v1 (Ollama).</span>
+          </span>
+        </div>
+        <input id="base-url" type="text" placeholder="https://api.provider.com/v1" spellcheck="false" autocomplete="off" />
+        <p class="hint">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true">
+            <circle cx="8" cy="8" r="6.4" />
+            <path d="M8 7.3v3.4" stroke-linecap="round" />
+            <circle cx="8" cy="5.1" r="0.9" fill="currentColor" stroke="none" />
+          </svg>
+          <span>Any OpenAI-compatible endpoint (OpenRouter, Groq, Ollama…)</span>
+        </p>
       </div>
-      <datalist id="model-list"></datalist>
-      <p class="hint">
-        <span class="q" tabindex="0" role="note" aria-label="More about models">
-          ?
-          <span class="tip">“Load models” calls GET {base}/models and fills the list. The list can go stale as providers add models — just type any model ID and it will be used as-is.</span>
-        </span>
-        Pick from the loaded list, or type any model ID
-      </p>
-    </div>
-  </div>
 
-  <div class="actions">
-    <button type="button" class="btn" id="test">Test</button>
-    <button type="button" class="btn primary" id="save">Save</button>
-  </div>
-  <p class="status" id="status" role="status"></p>
+      <div class="field">
+        <div class="label-row">
+          <label for="api-key">API key</label>
+          <span class="q" tabindex="0" aria-label="More about the API key">
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4">
+              <circle cx="8" cy="8" r="6.4" />
+              <path d="M8 7.3v3.4" stroke-linecap="round" />
+              <circle cx="8" cy="5.1" r="0.9" fill="currentColor" stroke="none" />
+            </svg>
+            <span class="tip">Saved only in chrome.storage.local on your device. It is sent only to the base URL above as a Bearer token — never synced to any account and never part of the extension code.</span>
+          </span>
+        </div>
+        <input id="api-key" type="password" placeholder="sk-…" spellcheck="false" autocomplete="off" />
+        <p class="hint">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true">
+            <circle cx="8" cy="8" r="6.4" />
+            <path d="M8 7.3v3.4" stroke-linecap="round" />
+            <circle cx="8" cy="5.1" r="0.9" fill="currentColor" stroke="none" />
+          </svg>
+          <span>Stored only in this browser — never synced or shared</span>
+        </p>
+      </div>
+
+      <div class="field">
+        <div class="label-row">
+          <label for="model">Model</label>
+        </div>
+        <div class="row">
+          <input id="model" type="text" list="model-list" placeholder="provider-model-id" spellcheck="false" autocomplete="off" />
+          <button type="button" class="btn mini" id="load-models">Load models</button>
+        </div>
+        <datalist id="model-list"></datalist>
+        <p class="hint">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true">
+            <circle cx="8" cy="8" r="6.4" />
+            <path d="M8 7.3v3.4" stroke-linecap="round" />
+            <circle cx="8" cy="5.1" r="0.9" fill="currentColor" stroke="none" />
+          </svg>
+          <span>Pick from the loaded list, or type any model ID</span>
+        </p>
+      </div>
+    </div>
+
+    <div class="actions">
+      <button type="button" class="btn ghost" id="test">Test</button>
+      <button type="button" class="btn primary" id="save">Save</button>
+    </div>
+    <p class="status" id="status" role="status"></p>
+  </main>
 
   <script src="popup.js"></script>
 </body>
