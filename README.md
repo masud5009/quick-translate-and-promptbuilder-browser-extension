@@ -23,7 +23,7 @@ By default translations use Google's free web endpoint — no key needed. Click 
    OpenRouter, Groq, DeepSeek, or a local `http://localhost:11434/v1` for Ollama).
 2. Paste your **API key** and click **Load models** to list the models the endpoint offers.
 3. Pick a model (or type any model ID) and hit **Save** — every translation now goes
-   through that endpoint. **Test** runs one sample translation to verify the setup.
+   through that endpoint.
 
 Security notes:
 - Your API key is stored only in `chrome.storage.local` on your machine — it is never

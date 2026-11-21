@@ -27,7 +27,8 @@
     * { box-sizing: border-box; }
     .panel {
       --bg:#ffffff; --fg:#14181f; --muted:#5d6675; --line:#dfe3ea;
-      --accent:#2f5be7; --soft:#eef2ff; --err:#b42318; --shadow:0 12px 32px rgba(16,24,40,.18);
+      --accent:#2f5be7; --soft:#eef2ff; --err:#b42318;
+      --danger:#d92d20; --danger-hover:#b42318; --shadow:0 12px 32px rgba(16,24,40,.18);
       position: fixed; width: 360px; max-width: calc(100vw - 16px);
       background: var(--bg); color: var(--fg);
       border: 1px solid var(--line); border-radius: 12px; box-shadow: var(--shadow);
@@ -35,10 +36,14 @@
     }
     @media (prefers-color-scheme: dark) {
       .panel { --bg:#1b1f27; --fg:#eceff4; --muted:#98a2b3; --line:#323945;
-               --accent:#8aa5ff; --soft:#262c3a; --err:#ff8a7a; --shadow:0 12px 32px rgba(0,0,0,.5); }
+               --accent:#8aa5ff; --soft:#262c3a; --err:#ff8a7a;
+               --danger:#e5484d; --danger-hover:#f16a6a; --shadow:0 12px 32px rgba(0,0,0,.5); }
     }
     .panel[hidden], .menu[hidden], .foot[hidden] { display: none; }
-    .bar { display: flex; align-items: center; gap: 8px; padding: 10px 8px 8px 12px; }
+    .bar {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 8px; padding: 10px 8px 8px 12px;
+    }
     .combo { position: relative; }
     .lang {
       display: flex; align-items: center; gap: 6px; cursor: pointer;
@@ -48,11 +53,14 @@
     .lang:hover { background: var(--soft); }
     .lang svg { width: 12px; height: 12px; color: var(--muted); }
     .from { margin-left: auto; color: var(--muted); font-size: 12px; white-space: nowrap; }
-    .icon {
-      border: 0; background: none; color: var(--muted); width: 28px; height: 28px;
-      border-radius: 6px; cursor: pointer; font-size: 18px; line-height: 1;
+    .icon.close {
+      border: 0; background: var(--danger); color: #fff;
+      width: 28px; height: 28px; flex: none;
+      border-radius: 8px; cursor: pointer;
+      font-size: 15px; font-weight: 700; line-height: 1;
+      display: inline-flex; align-items: center; justify-content: center;
     }
-    .icon:hover { background: var(--soft); color: var(--fg); }
+    .icon.close:hover { background: var(--danger-hover); color: #fff; }
     :is(.lang, .icon, .btn, .item, .search):focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
     .menu {
       position: absolute; top: calc(100% + 6px); left: 0; width: 250px; z-index: 2;
@@ -71,10 +79,6 @@
     }
     .item:hover, .item[aria-selected="true"] { background: var(--soft); }
     .item small { color: var(--muted); font-size: 12px; align-self: center; }
-    .orig {
-      margin: 0; padding: 0 12px 10px; color: var(--muted); font-size: 12.5px;
-      display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
-    }
     .result {
       padding: 12px; border-top: 1px solid var(--line); font-size: 15px; line-height: 1.65;
       max-height: 260px; overflow: auto; white-space: pre-wrap; word-break: break-word;
@@ -108,7 +112,6 @@
         <span class="from"></span>
         <button class="icon close" type="button" aria-label="Close">&times;</button>
       </div>
-      <p class="orig"></p>
       <div class="result loading" aria-live="polite"></div>
       <div class="foot" hidden>
         <button class="btn retry" type="button" hidden>Try again</button>
@@ -129,7 +132,7 @@
     el = {
       panel: q(".panel"), langBtn: q(".lang"), langName: q(".lang-name"), menu: q(".menu"),
       search: q(".search"), list: q(".list"), from: q(".from"), close: q(".close"),
-      orig: q(".orig"), result: q(".result"), foot: q(".foot"), copy: q(".copy"), retry: q(".retry")
+      result: q(".result"), foot: q(".foot"), copy: q(".copy"), retry: q(".retry")
     };
 
     el.langBtn.addEventListener("click", () => (el.menu.hidden ? openMenu() : closeMenu()));
@@ -292,7 +295,6 @@
     } catch {}
     state.text = text;
     state.anchor = selectionRect();
-    el.orig.textContent = text;
     if (!state.open) {
       state.open = true;
       document.addEventListener("mousedown", onDocDown, true);
